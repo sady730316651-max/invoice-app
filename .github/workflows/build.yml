@@ -1,0 +1,50 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Unzip project automatically
+        run: |
+          if [ -f "invoice_qr_manager.zip" ]; then
+            unzip -o invoice_qr_manager.zip -d extracted_project
+            if [ -f "extracted_project/pubspec.yaml" ]; then
+              cp -rn extracted_project/* .
+            else
+              SUBDIR=$(find extracted_project -maxdepth 2 -name "pubspec.yaml" -exec dirname {} \;)
+              if [ -n "$SUBDIR" ]; then
+                cp -rn $SUBDIR/* .
+              fi
+            fi
+          fi
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
